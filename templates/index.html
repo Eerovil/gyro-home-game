@@ -136,11 +136,14 @@
                 this.timeoutPromise(2000).then(this.trafficLoop)
             },
             methods: {
+                randInt(max) {
+                    return Math.floor(Math.random() * max)
+                },
                 trafficLoop() {
                     this.readySetGo().then(() => {
-                        this.timeoutPromise(15000 + Math.floor(Math.random() * 20000)).then(() => {
+                        this.timeoutPromise(15000 + this.randInt(20000)).then(() => {
                             this.redLight();
-                            this.tiemoutWithoutMoving(5000).then(this.trafficLoop)
+                            this.tiemoutWithoutMoving(5000 + this.randInt(4000)).then(this.trafficLoop)
                         });
                     });
                 },
@@ -195,7 +198,7 @@
                         this.tiemoutWithoutMoving(2000).then(() => {
                             this.traffic.yellow = true;
                             speak("Set")
-                            this.tiemoutWithoutMoving(3000).then(() => {
+                            this.tiemoutWithoutMoving(3000 + randInt(2000)).then(() => {
                                 speak("Go!")
                                 this.greenLight();
                                 resolve()
