@@ -66,6 +66,9 @@
     .car-laps {
         font-size: 10rem; 
     }
+    .lap-star {
+        width: 25px;
+    }
     iframe {
         margin-top: 10rem;
     }
@@ -91,11 +94,11 @@
                         <div class="car-img"><img :src="`/static/car${index + 1}.png`" :style="{
                             transform: `rotate(-${car.z}deg)`
                         }" /></div>
-                        <div class="car-laps">{{ car.laps }}</div>
-                        <div class="car-ip">{{ car.ip }}</div>
+                        <div class="car-laps"><img class="lap-star" v-for="star in car.laps" src="/static/star.png" /></div>
+                        <div v-if="false" class="car-ip">{{ car.ip }}</div>
                     </div>
                 </div>
-                <iframe ref="iframe" width ="361" height="1" src="https://www.youtube.com/embed/k85mRPqvMbE?enablejsapi=1&loop=1&list=PLOKmj4ntngd5MMyFL5h5EWzX1a57aVFNz" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                <iframe ref="iframe" width ="361" height="1" src="https://www.youtube.com/embed/gD1QqYiZ3kQ?enablejsapi=1&loop=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
             </div>
         </div>
     </script>
@@ -143,7 +146,7 @@
                     this.readySetGo().then(() => {
                         this.timeoutPromise(15000 + this.randInt(20000)).then(() => {
                             this.redLight();
-                            this.tiemoutWithoutMoving(5000 + this.randInt(4000)).then(this.trafficLoop)
+                            this.tiemoutWithoutMoving(3000).then(this.trafficLoop)
                         });
                     });
                 },
@@ -160,7 +163,6 @@
                         const interval = setInterval(() => {
                             if (this.carsMoved()) {
                                 start = Date.now()
-                                speak("Stop!")
                             }
                             if (Date.now() - start > timeout) {
                                 clearInterval(interval)
@@ -198,7 +200,7 @@
                         this.tiemoutWithoutMoving(2000).then(() => {
                             this.traffic.yellow = true;
                             speak("Set")
-                            this.tiemoutWithoutMoving(3000 + randInt(2000)).then(() => {
+                            this.tiemoutWithoutMoving(3000 + this.randInt(2000)).then(() => {
                                 speak("Go!")
                                 this.greenLight();
                                 resolve()

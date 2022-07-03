@@ -59,8 +59,13 @@ values_file_data = {}
 
 
 def read_values_file():
-    with open(os.path.join(FILE_PATH, '..', data_folder, 'values.json'), 'r') as f:
-        return json.load(f)
+    try:
+        with open(os.path.join(FILE_PATH, '..', data_folder, 'values.json'), 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        time.sleep(0.1)
+        logger.error(e)
+        return read_values_file()
 
 
 @app.route("/get_all_data", methods=['GET'])
