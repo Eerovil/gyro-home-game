@@ -59,18 +59,8 @@ values_file_data = {}
 
 
 def read_values_file():
-    global values_file_data, values_file_next_ms
-    current_ms = time.time_ns() // 1000000 % 10000000
-    values_file_next_ms = 0
-    if values_file_data and values_file_data.get('current_ms'):
-        values_file_next_ms = values_file_data.get('current_ms') + 500
-
-    if current_ms >= values_file_next_ms:
-        with open(os.path.join(FILE_PATH, '..', data_folder, 'values.json'), 'r') as f:
-            values_file_data = json.load(f)
-
-    return values_file_data
-
+    with open(os.path.join(FILE_PATH, '..', data_folder, 'values.json'), 'r') as f:
+        return json.load(f)
 
 
 @app.route("/get_all_data", methods=['GET'])
@@ -94,7 +84,9 @@ def handle_message(data):
 
 @socketio.on('mainloop')
 def handle_mainloop(data):
+    current_ms = time.time_ns() // 1000000 % 10000000
     values = read_values_file()
+    values['current_ms'] = current_ms
     logger.info('received mainloop: %s', values)
     emit('mainloop', values)
 
