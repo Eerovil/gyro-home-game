@@ -53,7 +53,11 @@ def after_request(response):
     return response
 
 
-@app.route("/")
-def hello_world():
-    return render_template("index.html", title = 'App')
-
+@app.route("/", methods=['POST'])
+def send_sensor():
+    if request.method == 'POST':
+        ip_address = get_ip()
+        data = request.json
+        logger.info(data)
+    
+    return 'OK', 200
