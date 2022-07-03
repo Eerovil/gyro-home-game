@@ -125,6 +125,9 @@
                 runtime_rand: null,
                 current_ms: 0,
 
+                timeForFixing: false,
+                trafficLoopEnabled: true,
+
                 traffic: {
                     red: true,
                     yellow: false,
@@ -143,8 +146,17 @@
                     return Math.floor(Math.random() * max)
                 },
                 trafficLoop() {
+                    if (!this.trafficLoopEnabled) {
+                        return;
+                    }
                     this.readySetGo().then(() => {
+                        if (!this.trafficLoopEnabled) {
+                            return;
+                        }
                         this.timeoutPromise(15000 + this.randInt(20000)).then(() => {
+                            if (!this.trafficLoopEnabled) {
+                                return;
+                            }
                             this.redLight();
                             this.tiemoutWithoutMoving(3000).then(this.trafficLoop)
                         });
@@ -173,7 +185,6 @@
                 },
                 carsMoved() {
                     for (const car of Object.values(this.cars)) {
-                        console.log(this.current_ms, car.ms)
                         if (this.current_ms - car.ms < 1500) {
                             return true;
                         }
@@ -218,9 +229,43 @@
                     console.log(el)
                     el.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
                 },
+                handleBensa(data) {
+                    let count = 0
+                    for (const choice in (data.bensa_asema || {})) {
+                        if (data.bensa_asema[choice] > this.timeForFixing) {
+                            count += 1;
+                        }
+                    }
+                    if (count >= Object.values(this.cars).length) {
+                        speak("Fixed!")
+                        axios.get('/bensa_done')
+                        this.timeForFixing = false;
+                        this.trafficLoopEnabled = true;
+                        this.trafficLoop();
+                    }
+                },
                 handleMainLoop(data) {
+                    if (data.bensa_asema_heartbeat) {
+                        for (const car of Object.values(this.cars || {})) {
+                            if (car.laps < ((data.LAST_CHANGE[car.ip] || {}).laps || 0)) {
+                                console.log(car.laps)
+                                if (car.laps % 10 == 0) {
+                                    this.timeForFixing = data.current_ms;
+                                    this.trafficLoopEnabled = false;
+                                    this.redLight();
+                                    this.timeoutPromise(2000).then(() => {
+                                        speak("Time for fixing!")
+                                    })
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     this.cars = data.LAST_CHANGE;
                     this.current_ms = data.current_ms;
+                    if (this.timeForFixing) {
+                        this.handleBensa(data)
+                    }
                     if (this.runtime_rand == null) {
                         this.runtime_rand = data.runtime_rand;
                     } else {

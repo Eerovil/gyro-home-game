@@ -38,6 +38,7 @@ logger = app.logger
 
 
 main_table = SqliteDict(os.path.join(data_folder, 'main.db'), tablename="main", autocommit=True)
+bensa_table = SqliteDict(os.path.join(data_folder, 'main.db'), tablename="bensa", autocommit=True)
 
 
 def get_ip():
@@ -68,15 +69,6 @@ def read_values_file():
         return read_values_file()
 
 
-@app.route("/get_all_data", methods=['GET'])
-def get_all_data():
-    if request.method != 'GET':
-        return "", 400
-
-    values = read_values_file()
-    return json.dumps({**values, 'runtime_rand': RUNTIME_RAND})
-
-
 @app.route("/")
 def hello_world():
     return render_template("index.html", title = 'App')
@@ -92,8 +84,54 @@ def handle_mainloop(data):
     current_ms = time.time_ns() // 1000000 % 10000000
     values = read_values_file()
     values['current_ms'] = current_ms
+    if main_table.get('bensa_asema_heartbeat', 0) > current_ms - 60000:
+        values['bensa_asema_heartbeat'] = True
+
+    logger.info("bensa_table: %s", bensa_table)
+
+    values['bensa_asema'] = dict(bensa_table)
+
     logger.info('received mainloop: %s', values)
     emit('mainloop', values)
+
+
+@app.route("/bensa-asema-heartbeat", methods=['GET'])
+def bensa_asema_heartbeat():
+    if request.method != 'GET':
+        return "", 400
+
+    current_ms = time.time_ns() // 1000000 % 10000000
+    main_table['bensa_asema_heartbeat'] = current_ms
+    logger.info('received bensa_asema_heartbeat: %s', current_ms)
+
+    return 'OK', 200
+
+
+@app.route("/bensa-asema-action", methods=['GET'])
+def bensa_asema_action():
+    if request.method != 'GET':
+        return "", 400
+
+    choice = request.args.get('choice')
+
+    current_ms = time.time_ns() // 1000000 % 10000000
+    bensa_table[choice] = current_ms
+
+    logger.info('received bensa_asema_action: %s', choice)
+
+    return 'OK', 200
+
+
+@app.route("/bensa_done", methods=['GET'])
+def bensa_done():
+    if request.method != 'GET':
+        return "", 400
+
+    for key in bensa_table:
+        del bensa_table[key]
+    logger.info('cleared bensa table')
+
+    return 'OK', 200
 
 
 if __name__ == '__main__':
