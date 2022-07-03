@@ -79,9 +79,9 @@
         <div id="wrapper">
             <div class="flex-center">
                 <div id="traffic-light">
-                    <div class="light red" :class="{inactive: !traffic.red}"></div>
-                    <div class="light yellow" :class="{inactive: !traffic.yellow}"></div>
-                    <div class="light green" :class="{inactive: !traffic.green}"></div>
+                    <div @click="redLight" class="light red" :class="{inactive: !traffic.red}"></div>
+                    <div @click="readySetGo" class="light yellow" :class="{inactive: !traffic.yellow}"></div>
+                    <div @click="greenLight" class="light green" :class="{inactive: !traffic.green}"></div>
                 </div>
             </div>
             <div>
@@ -94,7 +94,7 @@
                         <div class="car-ip">{{ car.ip }}</div>
                     </div>
                 </div>
-                <iframe width ="361" height="50" src="https://www.youtube.com/embed/k85mRPqvMbE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                <iframe ref="iframe" width ="361" height="1" src="https://www.youtube.com/embed/k85mRPqvMbE?enablejsapi=1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
             </div>
         </div>
     </script>
@@ -103,6 +103,16 @@
         socket.on('connect', function() {
             socket.emit('message', 'I\'m connected!');
         });
+        const speak = (text) => {
+            console.log("SPEAKING:", text);
+            const utter = new SpeechSynthesisUtterance();
+            utter.lang = 'fi-FI';
+            utter.text = text;
+            utter.rate = 1;
+            utter.pitch = 0.8;
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utter);
+        }
         var app = new Vue({
             el: '#vue-app',
             template: "#template",
@@ -111,9 +121,9 @@
                 runtime_rand: null,
 
                 traffic: {
-                    red: false,
+                    red: true,
                     yellow: false,
-                    green: true,
+                    green: false,
                 }
             }),
             mounted() {
@@ -122,8 +132,42 @@
                 socket.on('mainloop', this.handleMainLoop);
             },
             methods: {
+                redLight() {
+                    this.traffic.red = true;
+                    this.traffic.yellow = false;
+                    this.traffic.green = false;
+                    this.pauseMusic();
+                    speak("Stop!")
+                },
+                greenLight() {
+                    this.traffic.red = false;
+                    this.traffic.yellow = false;
+                    this.traffic.green = true;
+                    this.playMusic();
+                },
+                readySetGo() {
+                    this.redLight();
+                    speak("Ready")
+                    setTimeout(() => {
+                        this.traffic.yellow = true;
+                        speak("Set")
+                        setTimeout(() => {
+                            speak("Go!")
+                            this.greenLight();
+                        }, 3000)
+                    }, 2000)
+                },
+                pauseMusic() {
+                    const el = this.$refs.iframe;
+                    console.log(el)
+                    el.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                },
+                playMusic() {
+                    const el = this.$refs.iframe;
+                    console.log(el)
+                    el.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                },
                 handleMainLoop(data) {
-                    console.log(data);
                     this.cars = data.LAST_CHANGE;
                     if (this.runtime_rand == null) {
                         this.runtime_rand = data.runtime_rand;
