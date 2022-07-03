@@ -3,14 +3,15 @@ from sqlitedict import SqliteDict
 import os
 import json
 from logging.config import dictConfig
-import random
+import time
+from flask_socketio import SocketIO, emit
 
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 data_folder = 'data'
 
 
-RUNTIME_RAND = random.randrange(0, 100000)
+RUNTIME_RAND = time.time_ns() // 1000000
 
 
 dictConfig({
@@ -32,6 +33,7 @@ dictConfig({
 
 
 app = Flask(__name__, static_url_path='/static', static_folder='../static', template_folder='../templates')
+socketio = SocketIO(app)
 logger = app.logger
 
 
@@ -53,11 +55,49 @@ def after_request(response):
     return response
 
 
-@app.route("/", methods=['POST'])
-def send_sensor():
-    if request.method == 'POST':
-        ip_address = get_ip()
-        data = request.json
-        logger.info(data)
-    
-    return 'OK', 200
+values_file_data = {}
+
+
+def read_values_file():
+    global values_file_data, values_file_next_ms
+    current_ms = time.time_ns() // 1000000 % 10000000
+    values_file_next_ms = 0
+    if values_file_data and values_file_data.get('current_ms'):
+        values_file_next_ms = values_file_data.get('current_ms') + 500
+
+    if current_ms >= values_file_next_ms:
+        with open(os.path.join(FILE_PATH, '..', data_folder, 'values.json'), 'r') as f:
+            values_file_data = json.load(f)
+
+    return values_file_data
+
+
+
+@app.route("/get_all_data", methods=['GET'])
+def get_all_data():
+    if request.method != 'GET':
+        return "", 400
+
+    values = read_values_file()
+    return json.dumps({**values, 'runtime_rand': RUNTIME_RAND})
+
+
+@app.route("/")
+def hello_world():
+    return render_template("index.html", title = 'App')
+
+
+@socketio.on('message')
+def handle_message(data):
+    logger.info('received message: %s', data)
+
+
+@socketio.on('mainloop')
+def handle_mainloop(data):
+    values = read_values_file()
+    logger.info('received mainloop: %s', values)
+    emit('mainloop', values)
+
+
+if __name__ == '__main__':
+    socketio.run(app)

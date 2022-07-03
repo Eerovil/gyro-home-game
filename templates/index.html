@@ -1,0 +1,149 @@
+<html>
+<head>
+<title>App</title>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+
+<style>
+    #wrapper {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+    .flex-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #wrapper > div {
+        width: 100%;
+        height: 100%;
+    }
+    #traffic-light {
+        width: 35vh;
+        height: 80vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        background-color: black;
+    }
+    #traffic-light .light {
+        width: 20vh;
+        height: 20vh;
+        border-radius: 50%;
+        margin: 10px;
+    }
+    #traffic-light .light.inactive {
+        opacity: 0.1;
+    }
+    #traffic-light .red {
+        background-color: red;
+    }
+    #traffic-light .yellow {
+        background-color: yellow;
+    }
+    #traffic-light .green {
+        background-color: #54ff54;
+    }
+
+    #cars {
+        margin-top: 10vh;
+    }
+    .car {
+        width: 100%;
+        display: flex;
+
+        justify-content: space-between;
+    }
+    .car-img img {
+        height: 15vh;
+    }
+    .car-laps {
+        font-size: 10rem; 
+    }
+    iframe {
+        margin-top: 10rem;
+    }
+</style>
+
+</head>
+<body>
+    {% raw %}
+    <div id="vue-app">
+    </div>
+    <script type="template/html" id="template">
+        <div id="wrapper">
+            <div class="flex-center">
+                <div id="traffic-light">
+                    <div class="light red" :class="{inactive: !traffic.red}"></div>
+                    <div class="light yellow" :class="{inactive: !traffic.yellow}"></div>
+                    <div class="light green" :class="{inactive: !traffic.green}"></div>
+                </div>
+            </div>
+            <div>
+                <div id="cars">
+                    <div v-for="(car, ip, index) in cars" class="car">
+                        <div class="car-img"><img :src="`/static/car${index + 1}.png`" :style="{
+                            transform: `rotate(-${car.z}deg)`
+                        }" /></div>
+                        <div class="car-laps">{{ car.laps }}</div>
+                        <div class="car-ip">{{ car.ip }}</div>
+                    </div>
+                </div>
+                <iframe width ="361" height="50" src="https://www.youtube.com/embed/k85mRPqvMbE" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+            </div>
+        </div>
+    </script>
+    <script>
+        var socket = io();
+        socket.on('connect', function() {
+            socket.emit('message', 'I\'m connected!');
+        });
+        var app = new Vue({
+            el: '#vue-app',
+            template: "#template",
+            data: () => ({
+                cars: null,
+                runtime_rand: null,
+
+                traffic: {
+                    red: false,
+                    yellow: false,
+                    green: true,
+                }
+            }),
+            mounted() {
+                this.mainLoop();
+
+                socket.on('mainloop', this.handleMainLoop);
+            },
+            methods: {
+                handleMainLoop(data) {
+                    console.log(data);
+                    this.cars = data.LAST_CHANGE;
+                    if (this.runtime_rand == null) {
+                        this.runtime_rand = data.runtime_rand;
+                    } else {
+                        if (this.runtime_rand != data.runtime_rand) {
+                            window.location.reload();
+                        }
+                    }
+                    setTimeout(() => {
+                        this.mainLoop();
+                    }, 200);
+                },
+                mainLoop() {
+                    socket.emit('mainloop', {});
+                    return;
+                },
+            },
+            watch: {}
+        })
+    </script>
+    {% endraw %}
+</body>
+</html>
