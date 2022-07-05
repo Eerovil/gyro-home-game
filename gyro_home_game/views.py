@@ -50,8 +50,10 @@ def get_ip():
 
 @app.after_request
 def after_request(response):
-    response.headers['Access-Control-Allow-Methods']='*'
-    response.headers['Access-Control-Allow-Origin']='*'
+    response.headers['Access-Control-Allow-Methods'] = '*'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+
     response.headers['Vary']='Origin'
     return response
 
@@ -86,6 +88,7 @@ def handle_mainloop(data):
     values['current_ms'] = current_ms
     if main_table.get('bensa_asema_heartbeat', 0) > current_ms - 60000:
         values['bensa_asema_heartbeat'] = True
+        values['bensa_asema_choices'] = main_table.get('bensa_asema_choices', [])
 
     logger.info("bensa_table: %s", bensa_table)
 
@@ -95,10 +98,10 @@ def handle_mainloop(data):
     emit('mainloop', values)
 
 
-@app.route("/bensa-asema-heartbeat", methods=['GET'])
+@app.route("/bensa-asema-heartbeat", methods=['POST', 'GET'])
 def bensa_asema_heartbeat():
-    if request.method != 'GET':
-        return "", 400
+    if request.method == 'POST':
+        main_table['bensa_asema_choices'] = request.json.get('choices', [])
 
     current_ms = time.time_ns() // 1000000 % 10000000
     main_table['bensa_asema_heartbeat'] = current_ms
@@ -115,7 +118,7 @@ def bensa_asema_action():
     choice = request.args.get('choice')
 
     current_ms = time.time_ns() // 1000000 % 10000000
-    bensa_table[choice] = current_ms
+    bensa_table[current_ms] = choice
 
     logger.info('received bensa_asema_action: %s', choice)
 

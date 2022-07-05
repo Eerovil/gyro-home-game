@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 data/main.db
 values.json
+static/*.svg
